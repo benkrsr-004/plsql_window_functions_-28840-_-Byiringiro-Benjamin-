@@ -1,0 +1,113 @@
+ SQL scripts                  
+                 # Create Tables
+-- 1. Customers table
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY,
+    CustomerName VARCHAR(100) NOT NULL,
+    Region VARCHAR(50)
+);
+
+-- 2. Films table
+CREATE TABLE Films (
+    FilmID INT PRIMARY KEY,
+    FilmTitle VARCHAR(100) NOT NULL,
+    Category VARCHAR(50)
+);
+
+-- 3. Rentals table
+CREATE TABLE Rentals (
+    RentalID INT PRIMARY KEY,
+    CustomerID INT NOT NULL,
+    FilmID INT NOT NULL,
+    RentalDate DATE NOT NULL,
+    ReturnDate DATE,
+    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),
+    FOREIGN KEY (FilmID) REFERENCES Films(FilmID)
+);
+
+              # Insert Data
+  Customers
+INSERT INTO Customers VALUES (1, 'Alice', 'North');
+INSERT INTO Customers VALUES (2, 'Bob', 'South');
+INSERT INTO Customers VALUES (3, 'Charlie', 'East');
+INSERT INTO Customers VALUES (4, 'Diana', 'North');
+INSERT INTO Customers VALUES (5, 'Evan', 'West');
+
+   Films
+INSERT INTO Films VALUES (101, 'Inception', 'Sci-Fi');
+INSERT INTO Films VALUES (102, 'Titanic', 'Romance');
+INSERT INTO Films VALUES (103, 'Avengers', 'Action');
+INSERT INTO Films VALUES (104, 'The Lion King', 'Animation');
+INSERT INTO Films VALUES (105, 'Joker', 'Drama');
+
+ Rentals
+INSERT INTO Rentals VALUES (1001, 1, 101, '2026-01-05', '2026-01-10');
+INSERT INTO Rentals VALUES (1002, 1, 102, '2026-01-12', '2026-01-15');
+INSERT INTO Rentals VALUES (1003, 2, 103, '2026-01-07', '2026-01-12');
+INSERT INTO Rentals VALUES (1004, 3, 104, '2026-02-01', '2026-02-05');
+INSERT INTO Rentals VALUES (1005, 4, 105, '2026-02-03', '2026-02-08');
+INSERT INTO Rentals VALUES (1006, 2, 101, '2026-02-10', '2026-02-15');
+INSERT INTO Rentals VALUES (1007, 1, 103, '2026-02-12', '2026-02-18');
+INSERT INTO Rentals VALUES (1008, 5, 105, '2026-02-15', '2026-02-20');
+            
+               # SQL JOIN Queries
+  1. INNER JOIN: rentals with valid customers and films
+SELECT r.RentalID, c.CustomerName, f.FilmTitle, r.RentalDate, r.ReturnDate
+FROM Rentals r
+INNER JOIN Customers c ON r.CustomerID = c.CustomerID
+INNER JOIN Films f ON r.FilmID = f.FilmID;
+
+   2. LEFT JOIN: customers who never rented a film
+SELECT c.CustomerName, r.RentalID
+FROM Customers c
+LEFT JOIN Rentals r ON c.CustomerID = r.CustomerID
+WHERE r.RentalID IS NULL;
+
+   3. LEFT JOIN: films never rented
+SELECT f.FilmTitle, r.RentalID
+FROM Films f
+LEFT JOIN Rentals r ON f.FilmID = r.FilmID
+WHERE r.RentalID IS NULL;
+
+   4. FULL OUTER JOIN: compare all customers and films
+SELECT c.CustomerName, f.FilmTitle, r.RentalID
+FROM Customers c
+FULL OUTER JOIN Rentals r ON c.CustomerID = r.CustomerID
+FULL OUTER JOIN Films f ON r.FilmID = f.FilmID;
+
+   5. SELF JOIN: customers in the same region
+SELECT c1.CustomerName AS CustomerA, c2.CustomerName AS CustomerB, c1.Region
+FROM Customers c1
+INNER JOIN Customers c2 ON c1.Region = c2.Region AND c1.CustomerID < c2.CustomerID;
+  
+           # Window Functions
+
+1. Ranking: top 5 films by rentals
+SELECT FilmID, COUNT(*) AS TotalRentals,
+       RANK() OVER (ORDER BY COUNT(*) DESC) AS RentalRank
+FROM Rentals
+GROUP BY FilmID;
+
+  2. Aggregate: running total of rentals
+SELECT RentalDate, COUNT(*) OVER (ORDER BY RentalDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal
+FROM Rentals;
+
+  3. Navigation: month-over-month rental growth
+SELECT DATE_TRUNC('month', RentalDate) AS Month,
+       COUNT(*) AS MonthlyRentals,
+       LAG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', RentalDate)) AS PreviousMonthRentals,
+       COUNT(*) - LAG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', RentalDate)) AS RentalsGrowth
+FROM Rentals
+GROUP BY DATE_TRUNC('month', RentalDate);
+
+   4. Distribution: customer quartile segmentation
+SELECT CustomerID, COUNT(*) AS TotalRentals,
+       NTILE(4) OVER (ORDER BY COUNT(*) DESC) AS RentalQuartile
+FROM Rentals
+GROUP BY CustomerID;
+
+   5. Moving average: three-month rental average
+SELECT DATE_TRUNC('month', RentalDate) AS Month,
+       AVG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', RentalDate) ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS ThreeMonthAvg
+FROM Rentals
+GROUP BY DATE_TRUNC('month', RentalDate);
