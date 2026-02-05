@@ -1,20 +1,20 @@
  SQL scripts                  
                  # Create Tables
--- 1. Customers table
+   1. Customers table
 CREATE TABLE Customers (
     CustomerID INT PRIMARY KEY,
     CustomerName VARCHAR(100) NOT NULL,
     Region VARCHAR(50)
 );
 
--- 2. Films table
+   2. Films table
 CREATE TABLE Films (
     FilmID INT PRIMARY KEY,
     FilmTitle VARCHAR(100) NOT NULL,
     Category VARCHAR(50)
 );
 
--- 3. Rentals table
+   3. Rentals table
 CREATE TABLE Rentals (
     RentalID INT PRIMARY KEY,
     CustomerID INT NOT NULL,
@@ -72,8 +72,8 @@ WHERE r.RentalID IS NULL;
    4. FULL OUTER JOIN: compare all customers and films
 SELECT c.CustomerName, f.FilmTitle, r.RentalID
 FROM Customers c
-FULL OUTER JOIN Rentals r ON c.CustomerID = r.CustomerID
-FULL OUTER JOIN Films f ON r.FilmID = f.FilmID;
+LEFT JOIN Rentals r ON c.CustomerID = r.CustomerID
+LEFT JOIN Films f ON r.FilmID = f.FilmID;
 
    5. SELF JOIN: customers in the same region
 SELECT c1.CustomerName AS CustomerA, c2.CustomerName AS CustomerB, c1.Region
@@ -89,7 +89,8 @@ FROM Rentals
 GROUP BY FilmID;
 
   2. Aggregate: running total of rentals
-SELECT RentalDate, COUNT(*) OVER (ORDER BY RentalDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal
+SELECT RentalDate, 
+       COUNT(*) OVER (ORDER BY RentalDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal
 FROM Rentals;
 
   3. Navigation: month-over-month rental growth
