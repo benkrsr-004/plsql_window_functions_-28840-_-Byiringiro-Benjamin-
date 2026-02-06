@@ -82,33 +82,129 @@ INNER JOIN Customers c2 ON c1.Region = c2.Region AND c1.CustomerID < c2.Customer
   
            # Window Functions
 
-1. Ranking: top 5 films by rentals
-SELECT FilmID, COUNT(*) AS TotalRentals,
-       RANK() OVER (ORDER BY COUNT(*) DESC) AS RentalRank
+1. Ranking Functions:
+--ROW_NUMBER()
+SELECT 
+    FilmID,
+    COUNT(*) AS TotalRentals,
+    ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS RowNum
 FROM Rentals
 GROUP BY FilmID;
 
-  2. Aggregate: running total of rentals
-SELECT RentalDate, 
-       COUNT(*) OVER (ORDER BY RentalDate ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS RunningTotal
+--RANK()
+SELECT 
+    FilmID,
+    COUNT(*) AS TotalRentals,
+    RANK() OVER (ORDER BY COUNT(*) DESC) AS RentalRank
+FROM Rentals
+GROUP BY FilmID;
+
+--DENSE_RANK()
+SELECT 
+    FilmID,
+    COUNT(*) AS TotalRentals,
+    DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS DenseRentalRank
+FROM Rentals
+GROUP BY FilmID;
+
+-- PERCENT_RANK()
+SELECT 
+    FilmID,
+    COUNT(*) AS TotalRentals,
+    PERCENT_RANK() OVER (ORDER BY COUNT(*) DESC) AS PercentRank
+FROM Rentals
+GROUP BY FilmID;
+
+2. Aggregate Window Functions
+
+-- SUM()
+SELECT 
+    RentalDate,
+    COUNT(*) OVER (
+        ORDER BY RentalDate
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS RunningTotal
 FROM Rentals;
 
-  3. Navigation: month-over-month rental growth
-SELECT DATE_TRUNC('month', RentalDate) AS Month,
-       COUNT(*) AS MonthlyRentals,
-       LAG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', RentalDate)) AS PreviousMonthRentals,
-       COUNT(*) - LAG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', RentalDate)) AS RentalsGrowth
-FROM Rentals
-GROUP BY DATE_TRUNC('month', RentalDate);
+-- AVG()  running average rentals per day
+SELECT 
+    RentalDate,
+    AVG(DailyCount) OVER (
+        ORDER BY RentalDate
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS RunningAverage
+FROM (
+    SELECT RentalDate, COUNT(*) AS DailyCount
+    FROM Rentals
+    GROUP BY RentalDate
+) AS DailyTotals;
 
-   4. Distribution: customer quartile segmentation
-SELECT CustomerID, COUNT(*) AS TotalRentals,
-       NTILE(4) OVER (ORDER BY COUNT(*) DESC) AS RentalQuartile
+-- MIN() – earliest rental date so far (RANGE)
+SELECT 
+    RentalDate,
+    MIN(RentalDate) OVER (
+        ORDER BY RentalDate
+        RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS FirstRentalSoFar
+FROM Rentals;
+
+-- MAX() – latest rental date so far (RANGE)
+SELECT 
+    RentalDate,
+    MAX(RentalDate) OVER (
+        ORDER BY RentalDate
+        RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS LastRentalSoFar
+FROM Rentals;
+
+3. Navigation Functions
+
+-- LAG() – compare rentals with previous month
+SELECT 
+    Year,
+    Month,
+    TotalRentals,
+    LAG(TotalRentals) OVER (ORDER BY Year, Month) AS PreviousMonthRentals
+FROM (
+    SELECT 
+        YEAR(RentalDate) AS Year,
+        MONTH(RentalDate) AS Month,
+        COUNT(*) AS TotalRentals
+    FROM Rentals
+    GROUP BY YEAR(RentalDate), MONTH(RentalDate)
+) AS MonthlyRentals;
+
+-- LEAD() – compare rentals with next month
+SELECT 
+    Year,
+    Month,
+    TotalRentals,
+    LEAD(TotalRentals) OVER (ORDER BY Year, Month) AS NextMonthRentals
+FROM (
+    SELECT 
+        YEAR(RentalDate) AS Year,
+        MONTH(RentalDate) AS Month,
+        COUNT(*) AS TotalRentals
+    FROM Rentals
+    GROUP BY YEAR(RentalDate), MONTH(RentalDate)
+) AS MonthlyRentals;
+
+4. Distribution Functions
+
+-- NTILE(4) – customer rental quartiles
+SELECT 
+    CustomerID,
+    COUNT(*) AS TotalRentals,
+    NTILE(4) OVER (ORDER BY COUNT(*) DESC) AS RentalQuartile
 FROM Rentals
 GROUP BY CustomerID;
 
-   5. Moving average: three-month rental average
-SELECT DATE_TRUNC('month', RentalDate) AS Month,
-       AVG(COUNT(*)) OVER (ORDER BY DATE_TRUNC('month', RentalDate) ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS ThreeMonthAvg
+-- CUME_DIST() – cumulative distribution of customers
+SELECT 
+    CustomerID,
+    COUNT(*) AS TotalRentals,
+    CUME_DIST() OVER (ORDER BY COUNT(*) DESC) AS CumulativeDistribution
 FROM Rentals
-GROUP BY DATE_TRUNC('month', RentalDate);
+GROUP BY CustomerID;
+
+
